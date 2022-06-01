@@ -255,7 +255,7 @@ func (rl *RotateLog) rotateNolock(filename string) error {
 			continue
 		}
 
-		if rl.maxAge > 0 && fl.ModTime().After(cutoff) {
+		if rl.maxAge > 0 && fi.ModTime().After(cutoff) {
 			continue
 		}
 
