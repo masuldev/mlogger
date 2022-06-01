@@ -96,7 +96,12 @@ func (rl *RotateLog) Write(p []byte) (n int, err error) {
 	rl.mutex.Lock()
 	defer rl.mutex.Unlock()
 
-	out, err := rl.get
+	out, err := rl.getWriterNolock(false, false)
+	if err != nil {
+		return 0, errors.Wrap(err, "failed to acquite target io.Writer")
+	}
+
+	return out.Write(p)
 }
 
 func (rl *RotateLog) getWriterNolock(bailOnRotateFail, useGenerationalNames bool) (io.Writer, error) {

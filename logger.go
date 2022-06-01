@@ -1,9 +1,7 @@
 package mlogger
 
-import "log"
-
-type Logger struct {
-}
+//type Logger struct {
+//}
 
 type Info struct {
 	Application string
@@ -14,6 +12,6 @@ type Info struct {
 	Message     string
 }
 
-func Logger() {
-	log.New()
-}
+//func Logger() {
+//	log.New()
+//}
