@@ -2,9 +2,6 @@ package mlogger
 
 import (
 	"fmt"
-	"github.com/lestrrat-go/strftime"
-	"github.com/masuldev/mlogger/internal/util"
-	"github.com/pkg/errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -12,13 +9,22 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/lestrrat-go/strftime"
+	"github.com/masuldev/mlogger/internal/util"
+	"github.com/pkg/errors"
 )
 
 func (c clockFn) Now() time.Time {
 	return c()
 }
 
-func New(p string, options ...Option) (*RotateLog, error) {
+func NewDefaultRotate() (*RotateLog, error) {
+	filename := "./logs/log-%Y-%m-%d-%H.log"
+	return NewRotate(filename, WithMaxAge(7*24*time.Hour), WithRotationTime(6*time.Hour))
+}
+
+func NewRotate(p string, options ...Option) (*RotateLog, error) {
 	globalPattern := p
 	for _, re := range patternConversionRegexps {
 		globalPattern = re.ReplaceAllString(globalPattern, "*")
