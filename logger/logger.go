@@ -1,12 +1,12 @@
 package mlogger
 
 import (
+	mlogger "github.com/masuldev/mlogger/rotate"
+	"github.com/pkg/errors"
 	"io"
 	"log"
 	"os"
 	"time"
-
-	"github.com/lestrrat-go/strftime/internal/errors"
 )
 
 type LogLevel int
@@ -31,9 +31,9 @@ type LogInfo struct {
 }
 
 func NewDefaultLogger() (*Logger, error) {
-	defaultRotate, err := NewDefaultRotate()
+	defaultRotate, err := mlogger.NewDefaultRotate()
 	if err != nil {
-		return nil, errors.Errorf("Create Default RotateLog %s", err)
+		return nil, errors.Wrap(err, "Err Create Default RotateLog")
 	}
 
 	multiWriter := io.MultiWriter(defaultRotate, os.Stdout)
