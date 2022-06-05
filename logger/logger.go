@@ -1,22 +1,25 @@
 package mlogger
 
 import (
+	"encoding/json"
+	"fmt"
 	mlogger "github.com/masuldev/mlogger/rotate"
 	"github.com/pkg/errors"
 	"io"
 	"log"
 	"os"
-	"time"
+	"path"
+	"runtime"
 )
 
 type LogLevel int
 
 const (
-	CriticalLevel LogLevel = iota + 1
-	ErrorLevel
-	WarningLevel
+	DebugLevel LogLevel = iota
 	InfoLevel
-	DebugLevel
+	WarningLevel
+	ErrorLevel
+	CriticalLevel
 )
 
 type Logger struct {
@@ -24,10 +27,9 @@ type Logger struct {
 }
 
 type LogInfo struct {
-	Level     string
-	Timestamp time.Time
-	Caller    string
-	Message   string
+	Level   string
+	Caller  string
+	Message string
 }
 
 func NewDefaultLogger() (*Logger, error) {
@@ -51,4 +53,35 @@ func NewLogger(writer io.Writer) (*Logger, error) {
 	}
 
 	return &Logger{worker: log.New(multiWriter, "", 0)}, nil
+}
+
+func (l *Logger) logging(level int, message string) error {
+	_, filename, line, _ := runtime.Caller(2)
+	filename = path.Base(filename)
+
+	info := &LogInfo{
+		Level:   logLevelString(level),
+		Caller:  fmt.Sprintf("%s:%v", filename, line),
+		Message: message,
+	}
+
+	bytes, _ := json.Marshal(info)
+
+	return l.worker.Output(3, string(bytes))
+}
+
+func (l *Logger) Debug(message string) {
+	l.logging(0, message)
+}
+
+func logLevelString(level int) string {
+	logLevels := [...]string{
+		"CRITICAL",
+		"ERROR",
+		"WARNING",
+		"INFO",
+		"DEBUG",
+	}
+
+	return logLevels[level]
 }
