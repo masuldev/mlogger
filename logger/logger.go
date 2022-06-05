@@ -74,15 +74,15 @@ func (l *Logger) Debug(message string) {
 }
 
 func (l *Logger) Info(message string) {
-	l.logging(0, message)
+	l.logging(1, message)
 }
 
 func (l *Logger) Warning(message string) {
-	l.logging(0, message)
+	l.logging(2, message)
 }
 
 func (l *Logger) Error(message string) {
-	l.logging(0, message)
+	l.logging(3, message)
 }
 
 func (l *Logger) Critical(message string) {
