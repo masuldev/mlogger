@@ -10,16 +10,7 @@ import (
 	"os"
 	"path"
 	"runtime"
-)
-
-type LogLevel int
-
-const (
-	DebugLevel LogLevel = iota
-	InfoLevel
-	WarningLevel
-	ErrorLevel
-	CriticalLevel
+	"time"
 )
 
 type Logger struct {
@@ -27,9 +18,10 @@ type Logger struct {
 }
 
 type LogInfo struct {
-	Level   string
-	Caller  string
-	Message string
+	Timestamp string
+	Level     string
+	Caller    string
+	Message   string
 }
 
 func NewDefaultLogger() (*Logger, error) {
@@ -55,14 +47,21 @@ func NewLogger(writer io.Writer) (*Logger, error) {
 	return &Logger{worker: log.New(multiWriter, "", 0)}, nil
 }
 
+func makeTimestamp() string {
+	timeFormat := "2006-01-02 15:04:05"
+	loc, _ := time.LoadLocation("Asia/Seoul")
+	return time.Now().In(loc).Format(timeFormat)
+}
+
 func (l *Logger) logging(level int, message string) error {
 	_, filename, line, _ := runtime.Caller(2)
 	filename = path.Base(filename)
 
 	info := &LogInfo{
-		Level:   logLevelString(level),
-		Caller:  fmt.Sprintf("%s:%v", filename, line),
-		Message: message,
+		Timestamp: makeTimestamp(),
+		Level:     logLevelString(level),
+		Caller:    fmt.Sprintf("%s:%v", filename, line),
+		Message:   message,
 	}
 
 	bytes, _ := json.Marshal(info)
@@ -74,13 +73,29 @@ func (l *Logger) Debug(message string) {
 	l.logging(0, message)
 }
 
+func (l *Logger) Info(message string) {
+	l.logging(0, message)
+}
+
+func (l *Logger) Warning(message string) {
+	l.logging(0, message)
+}
+
+func (l *Logger) Error(message string) {
+	l.logging(0, message)
+}
+
+func (l *Logger) Critical(message string) {
+	l.logging(4, message)
+}
+
 func logLevelString(level int) string {
 	logLevels := [...]string{
-		"CRITICAL",
-		"ERROR",
-		"WARNING",
-		"INFO",
 		"DEBUG",
+		"INFO",
+		"WARNING",
+		"ERROR",
+		"CRITICAL",
 	}
 
 	return logLevels[level]
