@@ -89,6 +89,11 @@ func (l *Logger) Critical(message string) {
 	l.logging(4, message)
 }
 
+func (l *Logger) Panic(message string) {
+	l.logging(5, message)
+	os.Exit(1)
+}
+
 func logLevelString(level int) string {
 	logLevels := [...]string{
 		"DEBUG",
@@ -96,6 +101,7 @@ func logLevelString(level int) string {
 		"WARNING",
 		"ERROR",
 		"CRITICAL",
+		"Panic",
 	}
 
 	return logLevels[level]
