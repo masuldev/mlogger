@@ -30,10 +30,7 @@ func NewDefaultLogger() (*Logger, error) {
 		return nil, errors.Wrap(err, "Err Create Default RotateLog")
 	}
 
-	multiWriter := io.MultiWriter(defaultRotate, os.Stdout)
-
-	return &Logger{worker: log.New(multiWriter, "", 0)}, nil
-
+	return NewLogger(defaultRotate)
 }
 
 func NewLogger(writer io.Writer) (*Logger, error) {
