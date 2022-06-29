@@ -51,7 +51,7 @@ func makeTimestamp() string {
 }
 
 func (l *Logger) logging(level int, message string) error {
-	_, filename, line, _ := runtime.Caller(2)
+	_, filename, line, _ := runtime.Caller(1)
 	filename = path.Base(filename)
 
 	info := &LogInfo{
@@ -63,7 +63,7 @@ func (l *Logger) logging(level int, message string) error {
 
 	bytes, _ := json.Marshal(info)
 
-	return l.worker.Output(3, string(bytes))
+	return l.worker.Output(1, string(bytes))
 }
 
 func (l *Logger) Debug(message string) {
