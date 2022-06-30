@@ -15,6 +15,7 @@ import (
 
 type Logger struct {
 	worker *log.Logger
+	depth  int
 }
 
 type LogInfo struct {
@@ -24,24 +25,24 @@ type LogInfo struct {
 	Message   string
 }
 
-func NewDefaultLogger() (*Logger, error) {
+func NewDefaultLogger(depth int) (*Logger, error) {
 	defaultRotate, err := mlogger.NewDefaultRotate()
 	if err != nil {
 		return nil, errors.Wrap(err, "Err Create Default RotateLog")
 	}
 
-	return NewLogger(defaultRotate)
+	return NewLogger(defaultRotate, depth)
 }
 
-func NewLogger(writer io.Writer) (*Logger, error) {
+func NewLogger(writer io.Writer, depth int) (*Logger, error) {
 	var multiWriter io.Writer
 	if writer != nil {
 		multiWriter = io.MultiWriter(writer, os.Stdout)
 	} else {
-		multiWriter = io.MultiWriter(nil, os.Stdout)
+		multiWriter = io.Writer(os.Stdout)
 	}
 
-	return &Logger{worker: log.New(multiWriter, "", 0)}, nil
+	return &Logger{worker: log.New(multiWriter, "", 0), depth: depth}, nil
 }
 
 func makeTimestamp() string {
@@ -51,9 +52,8 @@ func makeTimestamp() string {
 }
 
 func (l *Logger) logging(level int, message string) error {
-	_, filename, line, _ := runtime.Caller(1)
+	_, filename, line, _ := runtime.Caller(l.depth)
 	filename = path.Base(filename)
-
 	info := &LogInfo{
 		Timestamp: makeTimestamp(),
 		Level:     logLevelString(level),
@@ -63,7 +63,7 @@ func (l *Logger) logging(level int, message string) error {
 
 	bytes, _ := json.Marshal(info)
 
-	return l.worker.Output(1, string(bytes))
+	return l.worker.Output(l.depth, string(bytes))
 }
 
 func (l *Logger) Debug(message string) {
