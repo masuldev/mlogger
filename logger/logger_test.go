@@ -1,6 +1,8 @@
 package mlogger
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestLoggerOutput(t *testing.T) {
 	logger, _ := NewLogger(nil, 2)

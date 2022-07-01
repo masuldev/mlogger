@@ -10,6 +10,7 @@ import (
 	"os"
 	"path"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -52,18 +53,58 @@ func makeTimestamp() string {
 }
 
 func (l *Logger) logging(level int, message string) error {
-	_, filename, line, _ := runtime.Caller(l.depth)
-	filename = path.Base(filename)
+	file, line, _ := getActualStack()
+
 	info := &LogInfo{
 		Timestamp: makeTimestamp(),
 		Level:     logLevelString(level),
-		Caller:    fmt.Sprintf("%s:%v", filename, line),
+		Caller:    fmt.Sprintf("%s:%v", file, line),
 		Message:   message,
 	}
 
 	bytes, _ := json.Marshal(info)
 
 	return l.worker.Output(l.depth, string(bytes))
+}
+
+func getActualStack() (file string, line int, ok bool) {
+	cpc, _, _, ok := runtime.Caller(2)
+	if !ok {
+		return
+	}
+
+	callerFunPtr := runtime.FuncForPC(cpc)
+	if callerFunPtr == nil {
+		ok = false
+		return
+	}
+
+	var pc uintptr
+	for callLevel := 3; callLevel < 5; callLevel++ {
+		pc, file, line, ok = runtime.Caller(callLevel)
+		file = path.Base(file)
+		if !ok {
+			return
+		}
+		funcPtr := runtime.FuncForPC(pc)
+		if funcPtr == nil {
+			ok = false
+			return
+		}
+		if getFuncNameWithoutPackage(funcPtr.Name()) != getFuncNameWithoutPackage(callerFunPtr.Name()) {
+			return
+		}
+	}
+	ok = false
+	return
+}
+
+func getFuncNameWithoutPackage(name string) string {
+	pos := strings.LastIndex(name, ".")
+	if pos >= 0 {
+		name = name[pos+1:]
+	}
+	return name
 }
 
 func (l *Logger) Debug(message string) {
