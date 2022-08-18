@@ -2,7 +2,6 @@ package mlogger
 
 import (
 	"encoding/json"
-	"fmt"
 	mlogger "github.com/masuldev/mlogger/rotate"
 	"github.com/pkg/errors"
 	"io"
@@ -53,13 +52,13 @@ func makeTimestamp() string {
 }
 
 func (l *Logger) logging(level int, message string) error {
-	file, line, _ := getActualStack()
+	//file, line, _ := getActualStack()
 
 	info := &LogInfo{
 		Timestamp: makeTimestamp(),
 		Level:     logLevelString(level),
-		Caller:    fmt.Sprintf("%s:%v", file, line),
-		Message:   message,
+		//Caller:    fmt.Sprintf("%s:%v", file, line),
+		Message: message,
 	}
 
 	bytes, _ := json.Marshal(info)
