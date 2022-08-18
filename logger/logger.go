@@ -1,6 +1,7 @@
 package mlogger
 
 import (
+	"fmt"
 	"github.com/goccy/go-json"
 	mlogger "github.com/masuldev/mlogger/rotate"
 	"github.com/pkg/errors"
@@ -51,17 +52,17 @@ func makeTimestamp() string {
 	return time.Now().In(loc).Format(timeFormat)
 }
 
-func (l *Logger) logging(level int, message string) error {
-	//file, line, _ := getActualStack()
+func (l *Logger) logging(level int, message interface{}) error {
+	file, line, _ := getActualStack()
 
 	info := &LogInfo{
 		Timestamp: makeTimestamp(),
 		Level:     logLevelString(level),
-		//Caller:    fmt.Sprintf("%s:%v", file, line),
-		Message: message,
+		Caller:    fmt.Sprintf("%s:%v", file, line),
+		Message:   fmt.Sprintf("%s", message),
 	}
 
-	bytes, _ := json.Marshal(info)
+	bytes, _ := json.MarshalIndent(info, "", "\t")
 
 	return l.worker.Output(l.depth, string(bytes))
 }
@@ -107,12 +108,20 @@ func getFuncNameWithoutPackage(name string) string {
 }
 
 func messageMarshaling(message interface{}) string {
+	var data map[string]interface{}
+
 	marshalMessage, _ := json.Marshal(message)
+	json.Unmarshal(marshalMessage, &data)
+
+	for key, value := range data {
+		fmt.Println(key, value)
+	}
+
 	return string(marshalMessage)
 }
 
 func (l *Logger) Debug(message interface{}) {
-	l.logging(0, messageMarshaling(message))
+	l.logging(0, Write(message))
 }
 
 func (l *Logger) Info(message string) {
