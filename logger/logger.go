@@ -1,7 +1,7 @@
 package mlogger
 
 import (
-	"encoding/json"
+	"github.com/goccy/go-json"
 	mlogger "github.com/masuldev/mlogger/rotate"
 	"github.com/pkg/errors"
 	"io"
@@ -106,8 +106,13 @@ func getFuncNameWithoutPackage(name string) string {
 	return name
 }
 
-func (l *Logger) Debug(message string) {
-	l.logging(0, message)
+func messageMarshaling(message interface{}) string {
+	marshalMessage, _ := json.Marshal(message)
+	return string(marshalMessage)
+}
+
+func (l *Logger) Debug(message interface{}) {
+	l.logging(0, messageMarshaling(message))
 }
 
 func (l *Logger) Info(message string) {
