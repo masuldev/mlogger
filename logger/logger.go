@@ -52,8 +52,8 @@ func makeTimestamp() string {
 	return time.Now().In(loc).Format(timeFormat)
 }
 
-func (l *Logger) logging(level int, message interface{}) error {
-	file, line, _ := getActualStack()
+func (l *Logger) logging(level int, message string) {
+	file, line, _ := getActualStack(l.depth)
 
 	info := &LogInfo{
 		Timestamp: makeTimestamp(),
@@ -62,13 +62,15 @@ func (l *Logger) logging(level int, message interface{}) error {
 		Message:   fmt.Sprintf("%s", message),
 	}
 
-	bytes, _ := json.MarshalIndent(info, "", "\t")
+	bytes, _ := json.Marshal(info)
 
-	return l.worker.Output(l.depth, string(bytes))
+	_, _ = l.worker.Writer().Write(bytes)
+
+	//return l.worker.Output(l.depth, string(bytes))
 }
 
-func getActualStack() (file string, line int, ok bool) {
-	cpc, _, _, ok := runtime.Caller(2)
+func getActualStack(level int) (file string, line int, ok bool) {
+	cpc, _, _, ok := runtime.Caller(level)
 	if !ok {
 		return
 	}
@@ -80,7 +82,7 @@ func getActualStack() (file string, line int, ok bool) {
 	}
 
 	var pc uintptr
-	for callLevel := 3; callLevel < 5; callLevel++ {
+	for callLevel := level + 1; callLevel < 5; callLevel++ {
 		pc, file, line, ok = runtime.Caller(callLevel)
 		file = path.Base(file)
 		if !ok {
@@ -120,8 +122,8 @@ func messageMarshaling(message interface{}) string {
 	return string(marshalMessage)
 }
 
-func (l *Logger) Debug(message interface{}) {
-	l.logging(0, Write(message))
+func (l *Logger) Debug(message string) {
+	l.logging(0, message)
 }
 
 func (l *Logger) Info(message string) {
