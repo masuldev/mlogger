@@ -64,9 +64,9 @@ func (l *Logger) logging(level int, message string) {
 
 	bytes, _ := json.Marshal(info)
 
-	_, _ = l.worker.Writer().Write(bytes)
+	//_, _ = l.worker.Writer().Write(bytes)
 
-	//return l.worker.Output(l.depth, string(bytes))
+	_ = l.worker.Output(l.depth, string(bytes))
 }
 
 func getActualStack(level int) (file string, line int, ok bool) {
