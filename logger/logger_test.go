@@ -1,6 +1,7 @@
 package mlogger
 
 import (
+	"os"
 	"testing"
 )
 
@@ -10,7 +11,7 @@ type TestStruct struct {
 }
 
 func TestLoggerOutput(t *testing.T) {
-	logger, _ := NewLogger(nil, 2)
+	logger := NewLogger(os.Stderr)
 	//logger.Debug(TestStruct{Name: "Hello", Message: "모두들 안녕"})
 	logger.Debug("String")
 	logger.Debug("String")

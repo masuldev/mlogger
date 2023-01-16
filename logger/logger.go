@@ -3,20 +3,22 @@ package mlogger
 import (
 	"fmt"
 	"github.com/goccy/go-json"
-	mlogger "github.com/masuldev/mlogger/rotate"
-	"github.com/pkg/errors"
+	"golang.org/x/crypto/ssh/terminal"
 	"io"
-	"log"
 	"os"
 	"path"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 )
 
 type Logger struct {
-	worker *log.Logger
-	depth  int
+	mu        sync.RWMutex
+	color     bool
+	out       FdWriter
+	debug     bool
+	timestamp bool
 }
 
 type LogInfo struct {
@@ -26,24 +28,26 @@ type LogInfo struct {
 	Message   string
 }
 
-func NewDefaultLogger(depth int) (*Logger, error) {
-	defaultRotate, err := mlogger.NewDefaultRotate()
-	if err != nil {
-		return nil, errors.Wrap(err, "Err Create Default RotateLog")
-	}
-
-	return NewLogger(defaultRotate, depth)
+type FdWriter interface {
+	io.Writer
+	Fd() uintptr
 }
 
-func NewLogger(writer io.Writer, depth int) (*Logger, error) {
-	var multiWriter io.Writer
-	if writer != nil {
-		multiWriter = io.MultiWriter(writer, os.Stdout)
-	} else {
-		multiWriter = io.Writer(os.Stdout)
-	}
+//func NewDefaultLogger(depth int) (*Logger, error) {
+//	defaultRotate, err := mlogger.NewDefaultRotate()
+//	if err != nil {
+//		return nil, errors.Wrap(err, "Err Create Default RotateLog")
+//	}
+//
+//	return NewLogger(defaultRotate)
+//}
 
-	return &Logger{worker: log.New(multiWriter, "", 0), depth: depth}, nil
+func NewLogger(out FdWriter) *Logger {
+	return &Logger{
+		color:     terminal.IsTerminal(int(out.Fd())),
+		out:       out,
+		timestamp: true,
+	}
 }
 
 func makeTimestamp() string {
@@ -52,21 +56,20 @@ func makeTimestamp() string {
 	return time.Now().In(loc).Format(timeFormat)
 }
 
-func (l *Logger) logging(level int, message string) {
-	file, line, _ := getActualStack(l.depth)
+func (l *Logger) logging(depth int, data string) error {
+	file, line, _ := getActualStack(depth)
 
 	info := &LogInfo{
 		Timestamp: makeTimestamp(),
-		Level:     logLevelString(level),
+		Level:     logLevelString(depth),
 		Caller:    fmt.Sprintf("%s:%v", file, line),
-		Message:   fmt.Sprintf("%s", message),
+		Message:   data,
 	}
 
 	bytes, _ := json.Marshal(info)
 
-	//_, _ = l.worker.Writer().Write(bytes)
-
-	_ = l.worker.Output(l.depth, string(bytes))
+	_, err := l.out.Write(bytes)
+	return err
 }
 
 func getActualStack(level int) (file string, line int, ok bool) {
@@ -122,28 +125,28 @@ func messageMarshaling(message interface{}) string {
 	return string(marshalMessage)
 }
 
-func (l *Logger) Debug(message string) {
-	l.logging(0, message)
+func (l *Logger) Debug(v ...interface{}) {
+	l.logging(1, fmt.Sprintln(v...))
 }
 
-func (l *Logger) Info(message string) {
-	l.logging(1, message)
+func (l *Logger) Info(v ...interface{}) {
+	l.logging(1, fmt.Sprintln(v...))
 }
 
-func (l *Logger) Warning(message string) {
-	l.logging(2, message)
+func (l *Logger) Warning(v ...interface{}) {
+	l.logging(1, fmt.Sprintln(v...))
 }
 
-func (l *Logger) Error(message string) {
-	l.logging(3, message)
+func (l *Logger) Error(v ...interface{}) {
+	l.logging(1, fmt.Sprintln(v...))
 }
 
-func (l *Logger) Critical(message string) {
-	l.logging(4, message)
+func (l *Logger) Critical(v ...interface{}) {
+	l.logging(1, fmt.Sprintln(v...))
 }
 
-func (l *Logger) Panic(message string) {
-	l.logging(5, message)
+func (l *Logger) Panic(v ...interface{}) {
+	l.logging(1, fmt.Sprintln(v...))
 	os.Exit(1)
 }
 
