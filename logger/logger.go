@@ -3,12 +3,12 @@ package mlogger
 import (
 	"fmt"
 	"github.com/goccy/go-json"
+	"github.com/masuldev/mlogger/internal/buffer"
 	"golang.org/x/crypto/ssh/terminal"
 	"io"
 	"os"
-	"path"
+	"path/filepath"
 	"runtime"
-	"strings"
 	"sync"
 	"time"
 )
@@ -19,6 +19,7 @@ type Logger struct {
 	out       FdWriter
 	debug     bool
 	timestamp bool
+	buf       buffer.Buffer
 }
 
 type LogInfo struct {
@@ -56,97 +57,94 @@ func makeTimestamp() string {
 	return time.Now().In(loc).Format(timeFormat)
 }
 
-func (l *Logger) logging(depth int, data string) error {
-	file, line, _ := getActualStack(depth)
+func (l *Logger) Output(depth int, level int, data string) error {
+	_, file, line, _ := runtime.Caller(depth + 1)
+	file = filepath.Base(file)
 
 	info := &LogInfo{
 		Timestamp: makeTimestamp(),
-		Level:     logLevelString(depth),
+		Level:     logLevelString(level),
 		Caller:    fmt.Sprintf("%s:%v", file, line),
 		Message:   data,
 	}
 
-	bytes, _ := json.Marshal(info)
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.buf.Flush()
 
-	_, err := l.out.Write(bytes)
+	d, _ := json.Marshal(info)
+	l.buf.Append(d)
+
+	if len(d) == 0 || d[len(d)-1] != '\n' {
+		l.buf.AppendByte('\n')
+	}
+
+	_, err := l.out.Write(l.buf)
 	return err
 }
 
-func getActualStack(level int) (file string, line int, ok bool) {
-	cpc, _, _, ok := runtime.Caller(level)
-	if !ok {
-		return
-	}
-
-	callerFunPtr := runtime.FuncForPC(cpc)
-	if callerFunPtr == nil {
-		ok = false
-		return
-	}
-
-	var pc uintptr
-	for callLevel := level + 1; callLevel < 5; callLevel++ {
-		pc, file, line, ok = runtime.Caller(callLevel)
-		file = path.Base(file)
-		if !ok {
-			return
-		}
-		funcPtr := runtime.FuncForPC(pc)
-		if funcPtr == nil {
-			ok = false
-			return
-		}
-		if getFuncNameWithoutPackage(funcPtr.Name()) != getFuncNameWithoutPackage(callerFunPtr.Name()) {
-			return
-		}
-	}
-	ok = false
-	return
-}
-
-func getFuncNameWithoutPackage(name string) string {
-	pos := strings.LastIndex(name, ".")
-	if pos >= 0 {
-		name = name[pos+1:]
-	}
-	return name
-}
-
-func messageMarshaling(message interface{}) string {
-	var data map[string]interface{}
-
-	marshalMessage, _ := json.Marshal(message)
-	json.Unmarshal(marshalMessage, &data)
-
-	for key, value := range data {
-		fmt.Println(key, value)
-	}
-
-	return string(marshalMessage)
-}
+//func getActualStack(depth int) (file string, line int, ok bool) {
+//	cpc, _, _, ok := runtime.Caller(depth)
+//	if !ok {
+//		return
+//	}
+//
+//	callerFunPtr := runtime.FuncForPC(cpc)
+//	if callerFunPtr == nil {
+//		ok = false
+//		return
+//	}
+//
+//	var pc uintptr
+//	for callLevel := depth + 1; callLevel < 5; callLevel++ {
+//		pc, file, line, ok = runtime.Caller(callLevel)
+//		file = path.Base(file)
+//		if !ok {
+//			return
+//		}
+//		funcPtr := runtime.FuncForPC(pc)
+//		if funcPtr == nil {
+//			ok = false
+//			return
+//		}
+//		if getFuncNameWithoutPackage(funcPtr.Name()) != getFuncNameWithoutPackage(callerFunPtr.Name()) {
+//			return
+//		}
+//	}
+//	ok = false
+//	return
+//}
+//
+//func getFuncNameWithoutPackage(name string) string {
+//	pos := strings.LastIndex(name, ".")
+//	if pos >= 0 {
+//		name = name[pos+1:]
+//	}
+//	return name
+//}
 
 func (l *Logger) Debug(v ...interface{}) {
-	l.logging(1, fmt.Sprintln(v...))
+	l.Output(1, 0, fmt.Sprint(v...))
 }
 
 func (l *Logger) Info(v ...interface{}) {
-	l.logging(1, fmt.Sprintln(v...))
+	l.Output(1, 1, fmt.Sprint(v...))
 }
 
-func (l *Logger) Warning(v ...interface{}) {
-	l.logging(1, fmt.Sprintln(v...))
+func (l *Logger) Warn(v ...interface{}) {
+	l.Output(1, 2, fmt.Sprint(v...))
 }
 
 func (l *Logger) Error(v ...interface{}) {
-	l.logging(1, fmt.Sprintln(v...))
+	l.Output(1, 3, fmt.Sprint(v...))
 }
 
 func (l *Logger) Critical(v ...interface{}) {
-	l.logging(1, fmt.Sprintln(v...))
+	l.Output(1, 4, fmt.Sprint(v...))
 }
 
 func (l *Logger) Panic(v ...interface{}) {
-	l.logging(1, fmt.Sprintln(v...))
+	l.Output(1, 5, fmt.Sprint(v...))
 	os.Exit(1)
 }
 
@@ -157,7 +155,7 @@ func logLevelString(level int) string {
 		"WARNING",
 		"ERROR",
 		"CRITICAL",
-		"Panic",
+		"PANIC",
 	}
 
 	return logLevels[level]
